@@ -17,115 +17,19 @@ A slightly opinionated module for validating pagination parameters and generatin
 
 ## Examples
 
-### For Validation With [Express](http://expressjs.com) Middleware
+### For Default Validation
 
 ```js
 const express = require('express');
-const { tokenize, validate } = require('list-pagination');
-
-const app = express();
-
-app.get('/foos',
-  validate,
-  (req, res, next) => {
-    res.locals.list = getList(res.locals.query);
-    next();
-  },
-  tokenize,
-  (req, res) => {
-    res.json({
-      pages: res.locals.pagination,
-      list: res.locals.list
-    })
-  }
-);
-
-/*
-GET request -> /foos
-// After validate
-res.locals would be set to:
-  {
-    query: {
-      // Defaults
-      limit: 25,
-      sort: ['id'],
-      filter: {}
-    }
-  }
-// After tokenize (assuming a list of 25 items)
-res.locals would include:
-  {
-    pagination: {
-      self: TOKEN,
-      first: TOKEN,
-      next: TOKEN // Omitted if less than 25 items
-    }
-  }
-
-GET request -> /foos?limit=5&sort=-foo&filter.foo='bar'
-// After validate
-res.locals would be set to:
-  {
-    query: {
-      limit: 5,
-      sort: ['-foo', 'id'],
-      filter: {foo: 'bar'}
-    }
-  }
-// After tokenize (assuming a list of 5 items)
-res.locals would include:
-  {
-    pagination: {
-      self: TOKEN,
-      first: TOKEN,
-      next: TOKEN
-    }
-  }
-
-GET request -> /foos?page=NEXT_TOKEN
-// After validate (assuming orignal limit, sort, and filter from previous example)
-res.locals would be set to:
-  {
-    query: {
-      limit: 5,
-      sort: ['-foo', 'id'],
-      filter: {foo: 'bar'},
-      // Subsequent next tokens will add more cursors, e.g. [6, 3],
-      //  where the current cursor will always be at the 0 index position
-      cursors: [3],
-      type: 'next'
-    }
-  }
-// After tokenize (assuming another list of 5 items)
-res.locals would include:
-  {
-    pagination: {
-      self: TOKEN,
-      first: TOKEN,
-      next: TOKEN,
-      prev: TOKEN
-    }
-  }
-*/
-```
-
-### For Validation Without Middleware
-
-```js
-const express = require('express');
-const { params } = require('list-pagination');
-
-const app = express();
-
 const { schema, compose } = require('list-pagination');
 
-const validate = schema();
-
 const app = express();
+
+const defaultSchema = schema();
 
 app.get('/foos',
   (req, res, next) => {
-    const {error: validationError, value: params} = validate(req.query);
+    const {error: validationError, value: params} = defaultSchema.validate(req.query);
 
     if (validationError !== null) { return next(validationError); }
 
@@ -141,6 +45,62 @@ app.get('/foos',
     });
   }
 );
+
+/*
+GET request -> /foos
+// After validate
+params would be:
+  {
+    // Defaults
+    limit: 25,
+    sort: ['id'],
+    filter: {}
+  }
+// After compose (assuming a list of 25 items)
+pagination would include:
+  {
+    self: TOKEN,
+    first: TOKEN,
+    next: TOKEN // Omitted if less than 25 items
+  }
+
+GET request -> /foos?limit=5&sort=-foo&filter.foo='bar'
+// After validate
+params would be:
+  {
+    limit: 5,
+    sort: ['-foo', 'id'],
+    filter: {foo: 'bar'}
+  }
+// After compose (assuming a list of 5 items)
+res.locals would include:
+  {
+    self: TOKEN,
+    first: TOKEN,
+    next: TOKEN
+  }
+
+GET request -> /foos?page=NEXT_TOKEN
+// After validate (assuming orignal limit, sort, and filter from previous example)
+params would be:
+  {
+    limit: 5,
+    sort: ['-foo', 'id'],
+    filter: {foo: 'bar'},
+    // Subsequent next tokens will add more cursors, e.g. [6, 3],
+    //  where the current cursor will always be at the 0 index position
+    cursors: [3],
+    type: 'next'
+  }
+// After compose (assuming another list of 5 items)
+res.locals would include:
+  {
+    self: TOKEN,
+    first: TOKEN,
+    next: TOKEN,
+    prev: TOKEN
+  }
+*/
 ```
 
 ## License
